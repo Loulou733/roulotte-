@@ -1,9 +1,9 @@
-//demarre le serveur HTTP
-import express from "express";
-const app = express();
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
-});
-app.listen(3000, () => {
-  console.log("API sur http://localhost:3000");
+// Démarre le serveur HTTP
+import { createApp } from "./app.js";
+import { container } from "./container.js";
+
+const app = createApp(container);
+
+app.listen(container.config.PORT, () => {
+  console.log("API sur http://localhost:" + container.config.PORT);
 });
