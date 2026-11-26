@@ -4,9 +4,13 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
 import { container } from "../src/container.js";
+import { MenuController } from "../src/modules/menu/controller.js";
 import { InMemoryMenuRepository } from "../src/modules/menu/repository.js";
+import { MenuService } from "../src/modules/menu/service.js";
 
-const app = createApp(container);
+// La carte en mémoire pour les tests : comme ça, on touche pas à la base de dev
+const menuController = new MenuController(new MenuService(new InMemoryMenuRepository()));
+const app = createApp({ ...container, menuController: menuController });
 
 describe("La carte", () => {
   it("GET /categories renvoie les 5 catégories triées par position", async () => {
