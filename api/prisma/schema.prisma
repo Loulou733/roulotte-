@@ -47,6 +47,7 @@ model Dish {
     description String @default("")
     priceCents Int//prix en centimes
     available Boolean @default(true)
+    stock Int?//null = illimité, sinon le nombre de portions restantes
     categoryId Int 
     category Category @relation(fields: [categoryId], references: [id])
     allergens Allergen[]

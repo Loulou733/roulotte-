@@ -10,6 +10,8 @@ await prisma.dish.deleteMany();
 await prisma.category.deleteMany();
 await prisma.allergen.deleteMany();
 await prisma.user.deleteMany();
+//on remet les compteurs d'id à zéro pour que les plats retrouvent toujours les ids 1 2 3 comme dans la carte en mémoire
+await prisma.$executeRaw`DELETE FROM sqlite_sequence`;
 for (const category of menu.categories) {
   await prisma.category.create({ data: { name: category.name, position: category.position } });
 }
@@ -28,6 +30,7 @@ for (const dish of menu.dishes) {
       description: dish.description,
       priceCents: dish.priceCents,
       available: dish.available,
+      stock: dish.stock,
       category: { connect: { name: dish.category } },
       allergens: { connect: allergens },
     },

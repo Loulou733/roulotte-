@@ -20,6 +20,7 @@ function fauxOrders(): OrderRepository {
   return {
     create: vi.fn(async (data: NewOrder) => commande(1, data.customerId)),
     findById: vi.fn(async (id: number) => commande(id, 1)),
+    changeStatus: vi.fn(async (id: number, from: string, to: string) => ({ ...commande(id, 1), status: to })),
     list: vi.fn(async () => ({ items: [], total: 0 })),
   };
 }

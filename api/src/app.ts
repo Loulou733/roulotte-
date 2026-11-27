@@ -4,6 +4,7 @@ import express from "express";
 import type { Container } from "./container.js";
 import { authErrorHandler, installSecurity } from "./fourni/auth/index.js";
 import { createMenuRouter } from "./modules/menu/routes.js";
+import { createOrderRouter } from "./modules/orders/orders.routes.js";
 import { errorHandler, notFound } from "./shared/errors.js";
 
 export function createApp(container: Container) {
@@ -17,7 +18,9 @@ export function createApp(container: Container) {
     res.json({ status: "ok" });
   });
   app.use("/auth", container.auth.router);
-  app.use(createMenuRouter(container.menuController)); // /categories, /allergens, /dishes
+  app.use(createMenuRouter(container.menuController, container.dishAdminController, container.auth)); // /categories, /allergens, /dishes
+
+  app.use("/orders", createOrderRouter(container.orderService, container.auth)); // connectés seulement
 
   // 3. Aucune route n'a répondu -> 404
   app.use(notFound);

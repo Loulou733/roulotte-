@@ -1,7 +1,7 @@
 //reçoit les requêtes HTTP des commandes  valide avec le DTO appelle le service répond
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { listOrdersQuerySchema, placeOrderSchema, toOrderDto } from "./orders.dto.js";
+import { changeStatusSchema, listOrdersQuerySchema, placeOrderSchema, toOrderDto } from "./orders.dto.js";
 import type { OrderService } from "./orders.service.js";
 //l'id de l'URL arrive en texte donc on le transforme en nombre entier sinon 400
 const idSchema = z.coerce.number().int().min(1);
@@ -29,5 +29,12 @@ export function createOrderController(service: OrderService) {
     const order = await service.getFor(req.user!, id);
     res.json(toOrderDto(order));
   }
-  return { place, list, getOne };
+  //PATCH /orders/:id/status
+  async function changeStatus(req: Request, res: Response) {
+    const id = idSchema.parse(req.params.id);
+    const body = changeStatusSchema.parse(req.body);
+    const order = await service.changeStatus(req.user!, id, body.status);
+    res.json(toOrderDto(order));
+  }
+  return { place, list, getOne, changeStatus };
 }

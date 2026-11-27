@@ -48,7 +48,7 @@ npm test             # Vitest, sans que l'API tourne et sans toucher à la base
 npm run typecheck    # vérifie les types sans compiler
 ```
 
-Les 5 tests actuels sont des tests unitaires du service des commandes, avec de faux repositories :
+Les tests du service des commandes utilisent de faux repositories, par exemple :
 
 - les prix viennent de la base, jamais du client (l'exemple de l'énoncé)
 - un plat inconnu ou indisponible donne une 422 qui liste tous les plats refusés, et rien est créé
@@ -58,21 +58,22 @@ Les 5 tests actuels sont des tests unitaires du service des commandes, avec de f
 
 ## Où on en est
 
-Palier visé : 1.
+Palier visé : 2. Au 27/11, `npm run recette:2` est entièrement vert (la recette 2 rejoue aussi la 1).
 
-Ce qui marche au 26/11 :
+Ce qui marche :
 
-- le schéma Prisma, la migration et le seed (5 catégories, 14 allergènes, 16 plats, 3 comptes)
-- le module commandes : DTO, repository Prisma, service, controller et routes pour `POST /orders`, `GET /orders` et `GET /orders/:id`
-- les 5 tests unitaires du service des commandes
+- le schéma Prisma (2 migrations : `init` et `stock`), le seed (5 catégories, 14 allergènes, 16 plats avec leur stock, 3 comptes)
+- l'authentification fournie, branchée sur un repository d'utilisateurs Prisma
+- la carte en lecture (`/categories`, `/allergens`, `/dishes`) et son administration par l'admin (`POST`, `PATCH`, `DELETE /dishes`)
+- les commandes : créer, lister, lire, et changer le statut (`PATCH /orders/:id/status`)
+- le stock : retiré à la commande dans une transaction (tout ou rien, décrément conditionnel), remis en cas d'annulation
+- la machine à états des commandes, écrite à un seul endroit (`orders.status.ts`)
+- 24 tests (Vitest) : services avec de faux repositories, machine à états, carte via Supertest
 
 Ce qui marche pas encore :
 
-- `config.ts`, `app.ts` et `container.ts` sont pas faits, donc pour l'instant l'API répond seulement à `/health`
-- les routes de la carte (`/categories`, `/allergens`, `/dishes`) et le repository des utilisateurs pour `/auth`
-- le gestionnaire d'erreurs unique
-- le test HTTP avec Supertest
-- du coup la recette du palier 1 passe pas encore, et le front affiche « La carte est inaccessible »
+- les tests HTTP Supertest sur `/orders` et `/auth`
+- le palier 3 (temps réel, photos, cache) et le palier 4 (paiement)
 
 ## Schéma de données
 

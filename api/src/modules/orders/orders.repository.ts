@@ -12,6 +12,8 @@ export interface OrderRepository {
   create(order: NewOrder): Promise<Order>;
   findById(id: number): Promise<Order | null>;
   //customerId vide = toutes les commandes cusiine et admin
+  //passe de from à to  restock=true remet les portions en stock (annulation)  409 si la commande a changé entre temps
+  changeStatus(id: number, from: string, to: string, restock: boolean): Promise<Order>;
   list(customerId: number | undefined, query: ListOrdersQuery): Promise<{ items: Order[]; total: number }>;
 }
 //coté carte le service a juste besoin de retrouver des plats avec leurs ids

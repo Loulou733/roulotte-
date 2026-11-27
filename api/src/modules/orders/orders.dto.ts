@@ -37,6 +37,8 @@ export const listOrdersQuerySchema = z.strictObject({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
+//PATCH /orders/:id/status  le corps contient juste le nouveau statut
+export const changeStatusSchema = z.strictObject({ status: z.enum(STATUTS) });
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 export type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>;
 export type Order = {

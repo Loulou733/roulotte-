@@ -32,6 +32,28 @@ export interface MenuRepository {
   findByIds(ids: number[]): Promise<Dish[]>; // pour les commandes (binôme)
 }
 
+// ---------- Ce que l'administratrice peut faire sur la carte (palier 2) ----------
+
+// Un plat à créer (les valeurs par défaut sont déjà appliquées par le service)
+export type NewDish = {
+  name: string;
+  description: string;
+  priceCents: number;
+  categoryId: number;
+  allergens: string[]; // des codes : ["gluten", "lait"]
+  available: boolean;
+  stock: number | null;
+};
+
+// Les modifications d'un plat : tous les champs sont facultatifs
+export type DishChanges = Partial<NewDish>;
+
+export interface DishAdminRepository {
+  create(data: NewDish): Promise<Dish>;
+  update(id: number, changes: DishChanges): Promise<Dish | null>; // null = plat introuvable
+  delete(id: number): Promise<boolean>; // false = plat introuvable
+}
+
 // ---------- La version "en mémoire" ----------
 
 export class InMemoryMenuRepository implements MenuRepository {

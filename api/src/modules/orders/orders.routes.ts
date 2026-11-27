@@ -12,5 +12,7 @@ export function createOrderRouter(service: OrderService, auth: Auth) {
   router.post("/", controller.place);
   router.get("/", controller.list);
   router.get("/:id", controller.getOne);
+  //connecté suffit ici  qui a le droit de faire quoi se règle dans le service
+  router.patch("/:id/status", controller.changeStatus);
   return router;
 }
