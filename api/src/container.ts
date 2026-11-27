@@ -36,7 +36,7 @@ export const container = {
   config: config,
   users: users,
   auth: auth,
-  menuRepository: menuRepository, // le binôme en aura besoin pour les commandes (findByIds)
+  menuRepository: menuRepository,
   menuController: menuController,
   dishAdminController: dishAdminController,
   orderService: orderService,
