@@ -1,10 +1,13 @@
 // Le "container" : c'est ici, et SEULEMENT ici, qu'on fabrique les objets
 // avec "new" et qu'on les branche entre eux.
+import { EventEmitter } from "node:events";
 import { config } from "./config.js";
 import { createAuth } from "./fourni/auth/index.js";
 import { MenuController } from "./modules/menu/controller.js";
 import { DishAdminController } from "./modules/menu/admin.controller.js";
 import { DishAdminService } from "./modules/menu/admin.service.js";
+import { DiskImageStorage } from "./modules/menu/image-storage.js";
+import { DishImageService } from "./modules/menu/image.service.js";
 import { PrismaMenuRepository } from "./modules/menu/prisma-repository.js";
 import { MenuService } from "./modules/menu/service.js";
 import { OrderService } from "./modules/orders/orders.service.js";
@@ -28,10 +31,17 @@ const menuController = new MenuController(menuService);
 // L'administration des plats (le même repository sait lire ET écrire)
 const dishAdminController = new DishAdminController(new DishAdminService(menuRepository, menuRepository));
 
-// 4. Les commandes : repository Prisma + service (il lit les prix dans la carte)
-const orderService = new OrderService(new PrismaOrderRepository(), menuRepository);
+// Les photos des plats (palier 3) : rangées sur le disque, dans uploads/dishes
+const dishImageService = new DishImageService(menuRepository, menuRepository, new DiskImageStorage());
 
-// 5. On range tout dans une seule boîte, donnée à createApp
+// 4. Le bus d'événements (pattern Observer) : le service des commandes y annonce, le flux SSE écoute
+const events = new EventEmitter();
+events.setMaxListeners(0); // chaque connexion SSE ajoute ses écouteurs, donc pas de limite
+
+// 5. Les commandes : repository Prisma + service (il lit les prix dans la carte et annonce sur le bus)
+const orderService = new OrderService(new PrismaOrderRepository(), menuRepository, events);
+
+// 6. On range tout dans une seule boîte, donnée à createApp
 export const container = {
   config: config,
   users: users,
@@ -39,6 +49,8 @@ export const container = {
   menuRepository: menuRepository,
   menuController: menuController,
   dishAdminController: dishAdminController,
+  dishImageService: dishImageService,
+  events: events,
   orderService: orderService,
 };
 
