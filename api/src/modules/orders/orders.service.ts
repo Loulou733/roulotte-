@@ -1,5 +1,6 @@
 //la logique des commandes  prix pris dans la base plats refusés qui a le droit de voir quoi
 //pas de req/res ni de prisma le service passe juste par les repositories
+import { EventEmitter } from "node:events";
 import type { AuthUser } from "../../fourni/auth/index.js";
 import { AppError } from "../../shared/errors.js";
 import { canMove } from "./orders.status.js";
@@ -8,9 +9,12 @@ import type { DishReader, NewOrder, OrderRepository } from "./orders.repository.
 export class OrderService {
   orders: OrderRepository;
   dishes: DishReader;
-  constructor(orders: OrderRepository, dishes: DishReader) {
+  //le bus où le service annonce ce qui se passe (pattern Observer)  il sait pas qui écoute ni que SSE existe
+  events: EventEmitter;
+  constructor(orders: OrderRepository, dishes: DishReader, events: EventEmitter = new EventEmitter()) {
     this.orders = orders;
     this.dishes = dishes;
+    this.events = events;
   }
   //POST /orders
   async place(user: AuthUser, input: PlaceOrderInput) {
@@ -38,12 +42,15 @@ export class OrderService {
     if (refused.length > 0) {
       throw new AppError(422, "DISH_UNAVAILABLE", "Plat inexistant ou indisponible", refused);
     }
-    return this.orders.create({
+    const order = await this.orders.create({
       customerId: user.id,
       note: input.note ?? null,
       totalCents: totalCents,
       items: lines,
     });
+    //nouvelle commande annoncée sur le bus
+    this.events.emit("order.created", order);
+    return order;
   }
   //GET /orders  un client voit que ses commandes la cuisine et l'admin voient tout
   list(user: AuthUser, query: ListOrdersQuery) {
@@ -78,6 +85,9 @@ export class OrderService {
       throw new AppError(409, "INVALID_TRANSITION", "Passage de " + order.status + " à " + status + " interdit");
     }
     //annuler = remettre les portions en stock
-    return this.orders.changeStatus(id, order.status, status, status === "CANCELLED");
+    const updated = await this.orders.changeStatus(id, order.status, status, status === "CANCELLED");
+    //changement de statut annoncé sur le bus
+    this.events.emit("order.updated", updated);
+    return updated;
   }
 }
