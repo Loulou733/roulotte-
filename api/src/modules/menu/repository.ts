@@ -54,6 +54,11 @@ export interface DishAdminRepository {
   delete(id: number): Promise<boolean>; // false = plat introuvable
 }
 
+//la photo d'un plat (palier 3)  une interface à part pour pas obliger les autres repositories à la faire
+export interface DishImageRepository {
+  setImage(id: number, imageUrl: string): Promise<Dish | null>; // null = plat introuvable
+}
+
 // ---------- La version "en mémoire" ----------
 
 export class InMemoryMenuRepository implements MenuRepository {

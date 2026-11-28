@@ -48,6 +48,7 @@ model Dish {
     priceCents Int//prix en centimes
     available Boolean @default(true)
     stock Int?//null = illimité, sinon le nombre de portions restantes
+    imageUrl String?//adresse de la photo sous /uploads  null = pas de photo
     categoryId Int 
     category Category @relation(fields: [categoryId], references: [id])
     allergens Allergen[]

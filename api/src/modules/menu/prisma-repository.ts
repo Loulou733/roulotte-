@@ -2,7 +2,7 @@
 // Il fait les mêmes choses que la version en mémoire, plus l'administration des plats.
 import { prisma } from "../../db/prisma.js";
 import { AppError } from "../../shared/errors.js";
-import type { Dish, DishAdminRepository, DishChanges, MenuRepository, NewDish } from "./repository.js";
+import type { Dish, DishAdminRepository, DishChanges, DishImageRepository, MenuRepository, NewDish } from "./repository.js";
 
 // Ce qu'on ramène avec chaque plat : sa catégorie (id + nom) et ses allergènes (code + libellé)
 const withDetails = {
@@ -18,11 +18,12 @@ type DishRow = {
   priceCents: number;
   available: boolean;
   stock: number | null;
+  imageUrl: string | null;
   category: { id: number; name: string };
   allergens: { code: string; label: string }[];
 };
 
-// On transforme la ligne de la base en plat du contrat (l'image arrive au palier 3)
+// On transforme la ligne de la base en plat du contrat
 function toDish(row: DishRow): Dish {
   return {
     id: row.id,
@@ -31,7 +32,7 @@ function toDish(row: DishRow): Dish {
     priceCents: row.priceCents,
     available: row.available,
     stock: row.stock,
-    imageUrl: null,
+    imageUrl: row.imageUrl,
     category: row.category,
     allergens: row.allergens,
   };
@@ -54,7 +55,7 @@ function prismaCode(error: unknown) {
   return "";
 }
 
-export class PrismaMenuRepository implements MenuRepository, DishAdminRepository {
+export class PrismaMenuRepository implements MenuRepository, DishAdminRepository, DishImageRepository {
   async findCategories() {
     return prisma.category.findMany();
   }
@@ -144,6 +145,19 @@ export class PrismaMenuRepository implements MenuRepository, DishAdminRepository
       // P2003 = le plat est dans une commande (règle onDelete: Restrict)
       if (code === "P2003") {
         throw new AppError(409, "CONFLICT", "Plat déjà commandé : rends-le indisponible à la place");
+      }
+      throw error;
+    }
+  }
+
+  //palier 3  range l'adresse de la nouvelle photo
+  async setImage(id: number, imageUrl: string) {
+    try {
+      const row = await prisma.dish.update({ where: { id: id }, data: { imageUrl: imageUrl }, include: withDetails });
+      return toDish(row);
+    } catch (error) {
+      if (prismaCode(error) === "P2025") {
+        return null; // plat introuvable
       }
       throw error;
     }
