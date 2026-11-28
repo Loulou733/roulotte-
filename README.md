@@ -37,6 +37,8 @@ Depuis la racine du dépôt, avec l'API lancée dans un autre terminal :
 ```bash
 npm run front        # le front sur http://localhost:5173
 npm run recette:1    # les tests automatiques du palier 1
+npm run recette:2    # le palier 2 (rejoue aussi le 1)
+npm run recette:3    # le palier 3 (rejoue aussi le 1 et le 2)
 ```
 
 ## Les tests
@@ -58,22 +60,27 @@ Les tests du service des commandes utilisent de faux repositories, par exemple :
 
 ## Où on en est
 
-Palier visé : 2. Au 27/11, `npm run recette:2` est entièrement vert (la recette 2 rejoue aussi la 1).
+Palier atteint : 2. Au 27/11, `npm run recette:2` est entièrement vert (la recette 2 rejoue aussi la 1).
+
+Palier 3 commencé : au 28/11, `npm run recette:3` passe 62 tests sur 64.
 
 Ce qui marche :
 
-- le schéma Prisma (2 migrations : `init` et `stock`), le seed (5 catégories, 14 allergènes, 16 plats avec leur stock, 3 comptes)
+- le schéma Prisma (3 migrations : `init`, `stock` et `image`), le seed (5 catégories, 14 allergènes, 16 plats avec leur stock, 3 comptes)
 - l'authentification fournie, branchée sur un repository d'utilisateurs Prisma
 - la carte en lecture (`/categories`, `/allergens`, `/dishes`) et son administration par l'admin (`POST`, `PATCH`, `DELETE /dishes`)
 - les commandes : créer, lister, lire, et changer le statut (`PATCH /orders/:id/status`)
 - le stock : retiré à la commande dans une transaction (tout ou rien, décrément conditionnel), remis en cas d'annulation
 - la machine à états des commandes, écrite à un seul endroit (`orders.status.ts`)
-- 24 tests (Vitest) : services avec de faux repositories, machine à états, carte via Supertest
+- palier 3, le temps réel : le service des commandes annonce `order.created` et `order.updated` sur un bus d'événements, et le flux `GET /events` (SSE) les envoie à ceux qui ont le droit de les voir. La cuisine voit arriver les commandes et le client voit la sienne avancer, sans recharger
+- palier 3, les photos : `PUT /dishes/:id/image` (2 Mo maximum, type vérifié sur le contenu avec file-type, nom choisi par le serveur, ancienne photo supprimée), et les photos servies sous `/uploads`
+- 32 tests (Vitest) : services avec de faux repositories, machine à états, bus d'événements, qui reçoit quoi en SSE, upload des photos, carte via Supertest
 
 Ce qui marche pas encore :
 
+- palier 3 : `/health` qui vérifie la base, l'en-tête `X-Request-Id` et les logs pino, et le cache de la carte. C'est les 2 tests rouges de la recette 3
 - les tests HTTP Supertest sur `/orders` et `/auth`
-- le palier 3 (temps réel, photos, cache) et le palier 4 (paiement)
+- le palier 4 (paiement)
 
 ## Schéma de données
 
@@ -108,6 +115,8 @@ erDiagram
         string description
         int priceCents
         boolean available
+        int stock "vide = illimité"
+        string imageUrl "peut être vide"
         int categoryId FK
     }
     Order {
@@ -156,9 +165,14 @@ api/
   src/
     db/prisma.ts           le client Prisma unique
     fourni/auth/           le module d'auth fourni, pas modifié
-    shared/errors.ts       AppError, les erreurs prévues
+    shared/errors.ts       AppError, le 404 et le gestionnaire d'erreurs
+    modules/menu/          la carte, son administration et les photos
     modules/orders/        le module commandes
+    modules/events/        le flux en direct GET /events
+    app.ts                 fabrique l'app Express
+    container.ts           crée les objets et les branche entre eux
     server.ts              démarre le serveur
+  uploads/                 les photos envoyées (pas dans Git)
 ```
 
 ## Les patterns et où ils sont
@@ -170,9 +184,12 @@ api/
 - Interface étroite, le I de SOLID → `DishReader` dans `orders.repository.ts`. Les commandes ont juste besoin de retrouver des plats par leurs ids, donc l'interface a une seule méthode, `findByIds`.
 - Factory → `createOrderController` dans `orders.controller.ts` et `createOrderRouter` dans `orders.routes.ts`. Elles fabriquent le controller et le routeur avec ce dont ils ont besoin.
 
-Le composition root (`container.ts`), l'Adapter qui branche notre repository d'utilisateurs sur `AuthUserStore` et la factory `createApp` arrivent avec la partie de Loulou733.
+- Composition root → `src/container.ts`. C'est le seul endroit qui crée les objets avec `new` et qui les branche entre eux. Pour passer de la mémoire à Prisma, on a changé que ce fichier.
+- Adapter → `src/modules/users/user.prisma-repository.ts`. Le module d'auth fourni attend un `AuthUserStore` : notre repository Prisma fait le lien entre cette interface et la base.
+- Factory → `createApp` dans `src/app.ts`. Elle fabrique l'app sans la démarrer, donc les tests Supertest peuvent l'utiliser.
+- Observer → `orders.service.ts`, `src/modules/events/events.routes.ts` et le bus dans `container.ts`. Le service annonce les commandes sur le bus avec `emit` sans savoir qui écoute, et chaque connexion SSE s'abonne avec `on` puis se désabonne avec `off` quand elle se ferme.
 
 ## Répartition du travail
 
-- Victor Melwig-Maes : Prisma (schéma, migration, seed, client unique), le module commandes (DTO, repositories, service, controller, routes) et ses tests, le nettoyage du dépôt.
-- Loulou733 : l'initialisation du projet (`package.json`, `tsconfig.json`), le socle (`server.ts`, `.env.example`, copie du module fourni et du menu) et `AppError`. À venir : config, app, container, gestionnaire d'erreurs, utilisateurs et carte.
+- Victor Melwig-Maes : Prisma (schéma, migrations, seed, client unique), le module commandes (DTO, repositories, service, controller, routes) et ses tests, les versions Prisma des repositories des utilisateurs et de la carte, le branchement des commandes, et le palier 3 (temps réel et photos).
+- Loulou733 : l'initialisation du projet et le socle (`config.ts`, gestionnaire d'erreurs, `app.ts`, `container.ts`, `server.ts`), le module carte et ses tests, et le palier 2 (administration de la carte, stock, changement de statut des commandes).
